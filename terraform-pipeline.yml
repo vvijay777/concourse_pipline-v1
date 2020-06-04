@@ -1,0 +1,85 @@
+---
+resources:
+- name: dynamodb
+  type: git
+  source:
+    uri: https://github.com/LearningTerraform/concourse_samples.git
+    branch: master
+
+- name: terraform-image
+  type: git
+  source:
+    uri: https://github.com/hashicorp/docker-hub-images.git
+    branch: master
+
+
+jobs:
+  - name: terraform-pipe-line
+    plan:
+    - get: dynamodb
+    - get: terraform-image
+
+    - task: check-terrafom-version
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source: {repository: hashicorp/terraform}
+        run:
+            path: sh
+            args: 
+                - -exc
+                - |
+                  terraform --version
+    
+    - task: run-terraform
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source: {repository: hashicorp/terraform}
+        inputs:
+            - name: dynamodb        
+        run:
+            path: sh
+            args: 
+                - -exc
+                - |
+                  env
+                  ls -lrth
+                  cd dynamodb
+                  ls -lrth
+                  terraform init
+                  terraform plan
+                  terraform apply --auto-approve                             
+        params:
+          AWS_ACCESS_KEY_ID: ((access-key))
+          AWS_SECRET_ACCESS_KEY: ((secret-key))
+
+    - task: remove-terraform
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source: {repository: hashicorp/terraform}
+        inputs:
+            - name: dynamodb
+        run:
+            path: sh
+            args: 
+                - -exc
+                - |
+                  ls -lrth
+                  cd dynamodb
+                  terraform init
+                  terraform plan
+                  terraform destroy --auto-approve        
+        params:
+          AWS_ACCESS_KEY_ID: ((access-key))
+          AWS_SECRET_ACCESS_KEY: ((secret-key))
+
+                
+    
+    
+
+ 
